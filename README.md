@@ -1,4 +1,4 @@
-# Prometheus Logstash Pipelines Exporter
+# Prometheus Logstash Pipeline Exporter
 
 This prometheus exporter exposes Logstash pipelines metrics only. \
 It does not expose JVM nor OS metrics provided by Logstash.
@@ -43,4 +43,3 @@ This `id` setting is available for all plugins.
 
 ## Requirements
 * Python 3
-*
