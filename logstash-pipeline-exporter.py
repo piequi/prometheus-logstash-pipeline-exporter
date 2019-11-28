@@ -1,9 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
-import json
 import sys
 import time
-import urllib2
+import requests
 
 from prometheus_client import start_http_server
 from prometheus_client.core import GaugeMetricFamily, REGISTRY
@@ -88,7 +87,7 @@ class LogstashPipelineCollector(object):
             }
         }
 
-        result = json.load(urllib2.urlopen(self._target + "/_node/stats"))
+        result = requests.get(self._target + "/_node/stats").json()
 
         for pipeline_id in result['pipelines']:
 
@@ -128,11 +127,11 @@ class LogstashPipelineCollector(object):
 
                 # grok plugin has some special fields
                 if plugin_name == "grok":
-                    metrics['plugins_filters_metrics']['grok_matches']\
-                    .add_metric([pipeline_id, plugin_id],
+                    metrics['plugins_filters_metrics']['grok_matches'] \
+                        .add_metric([pipeline_id, plugin_id],
                                     filter_plugin['matches'])
-                    metrics['plugins_filters_metrics']['grok_failures']\
-                    .add_metric([pipeline_id, plugin_id],
+                    metrics['plugins_filters_metrics']['grok_failures'] \
+                        .add_metric([pipeline_id, plugin_id],
                                     filter_plugin['failures'])
 
                     # "patterns_per_field" : {
@@ -143,14 +142,14 @@ class LogstashPipelineCollector(object):
             for output_plugin in result['pipelines'][pipeline_id]['plugins']['outputs']:
                 plugin_name = output_plugin['name']
                 plugin_id = output_plugin['id']
-                metrics['plugins_outputs_metrics']['in']\
-                .add_metric([pipeline_id, plugin_name, plugin_id],
+                metrics['plugins_outputs_metrics']['in'] \
+                    .add_metric([pipeline_id, plugin_name, plugin_id],
                                 output_plugin['events']['in'])
-                metrics['plugins_outputs_metrics']['out']\
-                .add_metric([pipeline_id, plugin_name, plugin_id],
+                metrics['plugins_outputs_metrics']['out'] \
+                    .add_metric([pipeline_id, plugin_name, plugin_id],
                                 output_plugin['events']['out'])
-                metrics['plugins_outputs_metrics']['duration']\
-                .add_metric([pipeline_id, plugin_name, plugin_id],
+                metrics['plugins_outputs_metrics']['duration'] \
+                    .add_metric([pipeline_id, plugin_name, plugin_id],
                                 output_plugin['events']['duration_in_millis'] / 1000.0)
 
         # return metrics
