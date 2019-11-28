@@ -178,7 +178,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--debug", action="store_true", help="set debug mode")
     parser.add_argument("logstash_endpoint", help="logstash's endpoint", nargs='?', default="http://localhost:9600")
-    parser.add_argument("listen_port", help="exporter binding port", nargs='?', default=9198, type=int)
+    parser.add_argument("web_listen_address", help="exporter binding address and port", nargs='?',
+                        default="0.0.0.0:9649")
     args = parser.parse_args()
 
     # set logging
@@ -193,8 +194,9 @@ if __name__ == "__main__":
     REGISTRY.register(LogstashPipelineCollector(args.logstash_endpoint))
 
     # expose metrics
-    start_http_server(args.listen_port)
-    logging.info("Now listening on port %d..." % args.listen_port)
+    bind_address, bind_port = args.web_listen_address.split(":")
+    start_http_server(addr=bind_address, port=int(bind_port))
+    logging.info("Now listening on %s port %s..." % (bind_address, bind_port))
     try:
         while True:
             time.sleep(1)
