@@ -88,74 +88,82 @@ class LogstashPipelineCollector(object):
             }
         }
 
-        result = requests.get(self._target + "/_node/stats").json()
+        try:
+            result = requests.get(self._target + "/_node/stats").json()
+            logging.debug("Logstash's response: %s", result)
+        except ValueError as ve:
+            logging.error("Error decoding logstash response: %s", ve)
+        except requests.exceptions.ConnectionError as ce:
+            logging.error("Error connecting to logstash: %s", ce)
+        else:
 
-        for pipeline_id in result['pipelines']:
+            if result['pipelines']:
+                for pipeline_id in result['pipelines']:
 
-            # grab events metrics
-            events = result['pipelines'][pipeline_id]['events']
-            metrics['events_metrics']['duration'] \
-                .add_metric([pipeline_id], events['duration_in_millis'] / 1000.0)
-            metrics['events_metrics']['in'] \
-                .add_metric([pipeline_id], events['in'])
-            metrics['events_metrics']['out'] \
-                .add_metric([pipeline_id], events['out'])
-            metrics['events_metrics']['filtered'] \
-                .add_metric([pipeline_id], events['filtered'])
-            metrics['events_metrics']['queue_push_duration'] \
-                .add_metric([pipeline_id], events['queue_push_duration_in_millis'] / 1000.0)
+                    # grab events metrics
+                    events = result['pipelines'][pipeline_id]['events']
+                    metrics['events_metrics']['duration'] \
+                        .add_metric([pipeline_id], events['duration_in_millis'] / 1000.0)
+                    metrics['events_metrics']['in'] \
+                        .add_metric([pipeline_id], events['in'])
+                    metrics['events_metrics']['out'] \
+                        .add_metric([pipeline_id], events['out'])
+                    metrics['events_metrics']['filtered'] \
+                        .add_metric([pipeline_id], events['filtered'])
+                    metrics['events_metrics']['queue_push_duration'] \
+                        .add_metric([pipeline_id], events['queue_push_duration_in_millis'] / 1000.0)
 
-            # grab input plugins metrics
-            for input_plugin in result['pipelines'][pipeline_id]['plugins']['inputs']:
-                plugin_name = input_plugin['name']
-                plugin_id = input_plugin['id']
-                metrics['plugins_inputs_metrics']['out'] \
-                    .add_metric([pipeline_id, plugin_name, plugin_id],
-                                input_plugin['events']['out'])
-                metrics['plugins_inputs_metrics']['queue_push_duration'] \
-                    .add_metric([pipeline_id, plugin_name, plugin_id],
-                                input_plugin['events']['queue_push_duration_in_millis'] / 1000.0)
+                    # grab input plugins metrics
+                    for input_plugin in result['pipelines'][pipeline_id]['plugins']['inputs']:
+                        plugin_name = input_plugin['name']
+                        plugin_id = input_plugin['id']
+                        metrics['plugins_inputs_metrics']['out'] \
+                            .add_metric([pipeline_id, plugin_name, plugin_id],
+                                        input_plugin['events']['out'])
+                        metrics['plugins_inputs_metrics']['queue_push_duration'] \
+                            .add_metric([pipeline_id, plugin_name, plugin_id],
+                                        input_plugin['events']['queue_push_duration_in_millis'] / 1000.0)
 
-            # grab filters plugins metrics
-            for filter_plugin in result['pipelines'][pipeline_id]['plugins']['filters']:
-                plugin_name = filter_plugin['name']
-                plugin_id = filter_plugin['id']
-                metrics['plugins_filters_metrics']['in'] \
-                    .add_metric([pipeline_id, plugin_name, plugin_id],
-                                filter_plugin['events']['in'])
-                metrics['plugins_filters_metrics']['out'] \
-                    .add_metric([pipeline_id, plugin_name, plugin_id],
-                                filter_plugin['events']['out'])
-                metrics['plugins_filters_metrics']['duration'] \
-                    .add_metric([pipeline_id, plugin_name, plugin_id],
-                                filter_plugin['events']['duration_in_millis'] / 1000.0)
+                    # grab filters plugins metrics
+                    for filter_plugin in result['pipelines'][pipeline_id]['plugins']['filters']:
+                        plugin_name = filter_plugin['name']
+                        plugin_id = filter_plugin['id']
+                        metrics['plugins_filters_metrics']['in'] \
+                            .add_metric([pipeline_id, plugin_name, plugin_id],
+                                        filter_plugin['events']['in'])
+                        metrics['plugins_filters_metrics']['out'] \
+                            .add_metric([pipeline_id, plugin_name, plugin_id],
+                                        filter_plugin['events']['out'])
+                        metrics['plugins_filters_metrics']['duration'] \
+                            .add_metric([pipeline_id, plugin_name, plugin_id],
+                                        filter_plugin['events']['duration_in_millis'] / 1000.0)
 
-                # grok plugin has some special fields
-                if plugin_name == "grok":
-                    metrics['plugins_filters_metrics']['grok_matches'] \
-                        .add_metric([pipeline_id, plugin_id],
-                                    filter_plugin['matches'])
-                    metrics['plugins_filters_metrics']['grok_failures'] \
-                        .add_metric([pipeline_id, plugin_id],
-                                    filter_plugin['failures'])
+                        # grok plugin has some special fields
+                        if plugin_name == "grok":
+                            metrics['plugins_filters_metrics']['grok_matches'] \
+                                .add_metric([pipeline_id, plugin_id],
+                                            filter_plugin['matches'])
+                            metrics['plugins_filters_metrics']['grok_failures'] \
+                                .add_metric([pipeline_id, plugin_id],
+                                            filter_plugin['failures'])
 
-                    # "patterns_per_field" : {
-                    #   "message" : 2
-                    # }
+                            # "patterns_per_field" : {
+                            #   "message" : 2
+                            # }
 
-            # grab output plugins metrics
-            for output_plugin in result['pipelines'][pipeline_id]['plugins']['outputs']:
-                plugin_name = output_plugin['name']
-                plugin_id = output_plugin['id']
-                metrics['plugins_outputs_metrics']['in'] \
-                    .add_metric([pipeline_id, plugin_name, plugin_id],
-                                output_plugin['events']['in'])
-                metrics['plugins_outputs_metrics']['out'] \
-                    .add_metric([pipeline_id, plugin_name, plugin_id],
-                                output_plugin['events']['out'])
-                metrics['plugins_outputs_metrics']['duration'] \
-                    .add_metric([pipeline_id, plugin_name, plugin_id],
-                                output_plugin['events']['duration_in_millis'] / 1000.0)
+                    # grab output plugins metrics
+                    for output_plugin in result['pipelines'][pipeline_id]['plugins']['outputs']:
+                        plugin_name = output_plugin['name']
+                        plugin_id = output_plugin['id']
+                        metrics['plugins_outputs_metrics']['in'] \
+                            .add_metric([pipeline_id, plugin_name, plugin_id],
+                                        output_plugin['events']['in'])
+                        metrics['plugins_outputs_metrics']['out'] \
+                            .add_metric([pipeline_id, plugin_name, plugin_id],
+                                        output_plugin['events']['out'])
+                        metrics['plugins_outputs_metrics']['duration'] \
+                            .add_metric([pipeline_id, plugin_name, plugin_id],
+                                        output_plugin['events']['duration_in_millis'] / 1000.0)
 
         # return metrics
         for metric_type in metrics:
