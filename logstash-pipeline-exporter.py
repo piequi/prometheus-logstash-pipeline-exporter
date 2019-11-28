@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-
+import argparse
+import logging
 import sys
 import time
 import requests
@@ -163,10 +164,31 @@ class LogstashPipelineCollector(object):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        sys.stderr.write("Usage: Logstash_pipeline_exporter.py http://localhost:9600 9400\n")
-        sys.exit(1)
-    REGISTRY.register(LogstashPipelineCollector(sys.argv[1]))
-    start_http_server(int(sys.argv[2]))
-    while True:
-        time.sleep(1)
+
+    # parse command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--debug", action="store_true", help="set debug mode")
+    parser.add_argument("logstash_endpoint", help="logstash's endpoint", nargs='?', default="http://localhost:9600")
+    parser.add_argument("listen_port", help="exporter binding port", nargs='?', default=9198, type=int)
+    args = parser.parse_args()
+
+    # set logging
+    if args.debug:
+        logging_level = logging.DEBUG
+    else:
+        logging_level = logging.INFO
+    logging_format = "%(asctime)s: %(levelname)s: %(message)s"
+    logging.basicConfig(format=logging_format, level=logging_level)
+
+    # setup and register metrics collector
+    REGISTRY.register(LogstashPipelineCollector(args.logstash_endpoint))
+
+    # expose metrics
+    start_http_server(args.listen_port)
+    logging.info("Now listening on port %d..." % args.listen_port)
+    try:
+        while True:
+            time.sleep(1)
+    except (KeyboardInterrupt, SystemExit):
+        logging.info("Quitting...")
+        sys.exit()
